@@ -59,6 +59,82 @@ async function run() {
     console.log(
       'Pinged your deployment. You successfully connected to MongoDB!'
     )
+    // database and collections
+    const eTutorBd_db = client.db("eTutorBd_db")
+    const userCollection = eTutorBd_db.collection("users")
+
+    // user related apis
+
+    // post user
+    // app.post('/users', async (req, res) => {
+    //   const userData = req.body
+    //   userData.created_at = new Date().toISOString()
+    //   userData.last_loggedIn = new Date().toISOString()
+
+    //   if(!userData.role) {
+    //     userData.role = 'student'
+    //   }
+      
+    //   console.log(userData)
+
+    //   const query = {
+    //     email: userData.email
+    //   }
+
+    //   const alreadyExists = await usersCollection.findOne(query)
+    //   console.log('User Already Exists---> ', !!alreadyExists)
+
+    //   if (alreadyExists) {
+    //     console.log('Updating user info......')
+    //     const result = await usersCollection.updateOne(query, {
+    //       $set: {
+    //         last_loggedIn: new Date().toISOString(),
+    //       },
+    //     })
+    //     return res.send(result)
+    //   }
+
+    //   console.log('Saving new user info......')
+    //   const userInsertResult = await usersCollection.insertOne(userData)
+      
+
+    //   res.send(userInsertResult)
+    // })
+
+    app.post('/users', async (req, res) => {
+            const user = req.body;
+            // user.role = 'user';
+            user.createdAt = new Date();
+            const email = user.email;
+            const userExists = await userCollection.findOne({ email })
+
+            if (userExists) {
+                return res.send({ message: 'user exists' })
+            }
+
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
+    //get all users
+    app.get('/users', async (req, res)=> {
+      const query = {}
+      const cursor = userCollection.find(query)
+      const result = await cursor.toArray()
+
+      res.send(result)
+    })
+
+    app.get('/user', async(req, res) => {
+      const email = req.body 
+      const query = {}
+      query.email = email
+
+      const user = await userCollection.findOne(query)
+      
+      res.send(user)
+    })
+
   } finally {
     // Ensures that the client will close when you finish/error
   }
