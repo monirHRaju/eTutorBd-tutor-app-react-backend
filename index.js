@@ -1,7 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const admin = require('firebase-admin')
 const port = process.env.PORT || 3000
 // const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString(
@@ -62,6 +62,7 @@ async function run() {
     // database and collections
     const eTutorBd_db = client.db("eTutorBd_db")
     const userCollection = eTutorBd_db.collection("users")
+    const tuitionCollection = eTutorBd_db.collection("tuitions")
 
     // user related apis
 
@@ -134,6 +135,39 @@ async function run() {
       
       res.send(user)
     })
+
+    //tuitions related apis
+    app.post('/tuitions', async(req, res) => {
+      const tuitionData = req.body
+      
+      const result = await tuitionCollection.insertOne(tuitionData)
+      res.send(result)
+    })
+    
+    app.get('/tuitions', async(req, res) => {
+      
+      const result = await tuitionCollection.find().toArray()
+      res.send(result)
+    })
+
+    
+    app.get('/tuitions/:id', async(req, res) => {
+      const id = req.params.id
+      const query = {_id : new ObjectId(id)}
+
+      const result = await tuitionCollection.findOne(query)
+      res.send(result)
+    })
+    
+    app.get('/tuitions/:email/student', async(req, res) => {
+      const email = req.params.id
+      const query = {studentEmail : email}
+
+      const result = await userCollection.findOne(query)
+      res.send(result)
+    })
+
+
 
   } finally {
     // Ensures that the client will close when you finish/error
