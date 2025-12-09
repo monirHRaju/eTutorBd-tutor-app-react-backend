@@ -63,7 +63,7 @@ async function run() {
     const eTutorBd_db = client.db("eTutorBd_db")
     const userCollection = eTutorBd_db.collection("users")
     const tuitionCollection = eTutorBd_db.collection("tuitions")
-    const offerCollection = eTutorBd_db.collection("offers")
+    const applicationCollection = eTutorBd_db.collection("applications")
 
     // user related apis
 
@@ -241,13 +241,24 @@ async function run() {
       res.send(result)
     })
     
-    //offers related apis 
-    app.post('/offers', async(req, res) => {
-      const offerInfo = req.body
-      offerInfo.createdAt = new Date().toLocaleString()
+    //application related apis 
+    app.post('/applications', async(req, res) => {
+      const applicationInfo = req.body
+      applicationInfo.status = 'pending'
+      applicationInfo.createdAt = new Date().toLocaleString()
 
-      const result = await offerCollection.insertOne(offerInfo)
+      const result = await applicationCollection.insertOne(applicationInfo)
       
+      res.send(result)
+    })
+
+    app.get('/applications/:email', async(req, res) => {
+      const email = req.params.email
+      const query = {
+        tutorEmail : email
+      }
+      const result = await applicationCollection.find(query).toArray()
+
       res.send(result)
     })
     
