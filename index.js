@@ -103,17 +103,20 @@ async function run() {
     // })
 
     app.post('/users', async (req, res) => {
-            const user = req.body;
+            const userData = req.body;
             // user.role = 'user';
-            user.createdAt = new Date();
-            const email = user.email;
-            const userExists = await userCollection.findOne({ email })
+            userData.createdAt = new Date().toLocaleDateString();
+            userData.status = 'pending'
+            const query = {
+              email : userData.email
+            }
+            const userExists = await userCollection.findOne(query)
 
             if (userExists) {
-                return res.send({ message: 'user exists' })
+                return res.status(401).send({ message: 'user exists' })
             }
 
-            const result = await userCollection.insertOne(user);
+            const result = await userCollection.insertOne(userData);
             res.send(result);
         })
 
@@ -136,10 +139,39 @@ async function run() {
       res.send(user)
     })
 
+    app.patch('/users/:id', async(req, res)=> {
+      const role = req.body.role
+      const id = req.params.id
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          role : role
+        }
+      }
+      const result = await userCollection.updateOne(query, updateDoc)
+
+      res.send(result)
+    })
+    
+    app.patch('/users/:id/status', async(req, res)=> {
+      const status = req.body.status
+      const id = req.params.id
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          status : status
+        }
+      }
+      const result = await userCollection.updateOne(query, updateDoc)
+
+      res.send(result)
+    })
+
     //tuitions related apis
     app.post('/tuitions', async(req, res) => {
       const tuitionData = req.body
-      
+      tuitionData.createdAt = new Date().toLocaleString()
+
       const result = await tuitionCollection.insertOne(tuitionData)
       res.send(result)
     })
