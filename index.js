@@ -63,6 +63,7 @@ async function run() {
     const eTutorBd_db = client.db("eTutorBd_db")
     const userCollection = eTutorBd_db.collection("users")
     const tuitionCollection = eTutorBd_db.collection("tuitions")
+    const offerCollection = eTutorBd_db.collection("offers")
 
     // user related apis
 
@@ -139,6 +140,14 @@ async function run() {
       res.send(user)
     })
 
+    app.get('/users/:email/role', async(req, res)=> {
+      const email = req.params.email
+      const query = {email}
+      const user = await userCollection.findOne(query)
+      // console.log(result)
+      res.send({role: user?.role })
+    })
+    
     app.patch('/users/:id', async(req, res)=> {
       const role = req.body.role
       const id = req.params.id
@@ -232,7 +241,16 @@ async function run() {
       res.send(result)
     })
     
+    //offers related apis 
+    app.post('/offers', async(req, res) => {
+      const offerInfo = req.body
+      offerInfo.createdAt = new Date().toLocaleString()
 
+      const result = await offerCollection.insertOne(offerInfo)
+      
+      res.send(result)
+    })
+    
 
   } finally {
     // Ensures that the client will close when you finish/error
