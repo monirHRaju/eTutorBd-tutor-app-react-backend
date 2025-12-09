@@ -173,12 +173,45 @@ async function run() {
       tuitionData.createdAt = new Date().toLocaleString()
 
       const result = await tuitionCollection.insertOne(tuitionData)
+      
       res.send(result)
     })
     
+    app.patch('/tuitions/:tuitionId/status', async(req, res)=> {
+      const status = req.body.status
+      const tuitionId = req.params.tuitionId
+      const query = {_id : new ObjectId(tuitionId)}
+      const updateDoc = {
+        $set: {
+          status : status
+        }
+      }
+      const result = await tuitionCollection.updateOne(query, updateDoc)
+
+      res.send(result)
+    })
+    
+    app.delete('/tuitions/:tuitionId/delete', async(req, res)=> {
+      const tuitionId = req.params.tuitionId
+      const query = {_id : new ObjectId(tuitionId)}
+
+      const result = await tuitionCollection.deleteOne(query)
+
+      res.send(result)
+    })
+
     app.get('/tuitions', async(req, res) => {
-      
-      const result = await tuitionCollection.find().toArray()
+      const query = {
+        status : 'accepted'
+      }
+      const result = await tuitionCollection.find(query).limit(8).sort({createdAt : -1}).toArray()
+      // console.log(result)
+      res.send(result)
+    })
+    
+    app.get('/all-tuitions', async(req, res) => {
+      const result = await tuitionCollection.find().sort({createdAt : -1}).toArray()
+      // console.log(result)
       res.send(result)
     })
 
@@ -198,7 +231,7 @@ async function run() {
       const result = await userCollection.findOne(query)
       res.send(result)
     })
-
+    
 
 
   } finally {
