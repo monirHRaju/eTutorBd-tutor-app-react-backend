@@ -262,6 +262,28 @@ async function run() {
       res.send(result)
     })
     
+    app.patch('/applications/:id/status', async(req, res)=> {
+      const status = req.body.status
+      const id = req.params.id
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          status : status
+        }
+      }
+      const result = await applicationCollection.updateOne(query, updateDoc)
+
+      res.send(result)
+    })
+    
+    app.patch('/applications/:id/delete', async(req, res)=> {
+      const applicationId = req.params.id
+      const query = {_id : new ObjectId(applicationId)}
+  
+      const result = await applicationCollection.deleteOne(query)
+
+      res.send(result)
+    })
 
   } finally {
     // Ensures that the client will close when you finish/error
