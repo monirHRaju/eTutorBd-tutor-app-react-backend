@@ -148,6 +148,14 @@ async function run() {
       res.send({role: user?.role })
     })
     
+    app.get('/tutor-info/:email/email', async(req, res)=> {
+      const email = req.params.email
+      const query = {email}
+      const user = await userCollection.findOne(query)
+      // console.log(result)
+      res.send({role: user?.role })
+    })
+    
     app.patch('/users/:id', async(req, res)=> {
       const role = req.body.role
       const id = req.params.id
@@ -234,17 +242,16 @@ async function run() {
     })
     
     app.get('/tuitions/:email/student', async(req, res) => {
-      const email = req.params.id
+      const email = req.params.email
       const query = {studentEmail : email}
 
-      const result = await userCollection.findOne(query)
+      const result = await tuitionCollection.find(query).toArray()
       res.send(result)
     })
     
     //application related apis 
     app.post('/applications', async(req, res) => {
       const applicationInfo = req.body
-      applicationInfo.status = 'pending'
       applicationInfo.createdAt = new Date().toLocaleString()
 
       const result = await applicationCollection.insertOne(applicationInfo)
@@ -252,12 +259,31 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/applications/:tuitionId', async(req, res) => {
+      const tuitionId = req.params.tuitionId
+      const query = {tuitionId : tuitionId}
+
+      const result = await applicationCollection.find(query).sort({createdAt : -1}).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/applications/:email/student', async(req, res) => {
+      const email = req.params.email
+      const query = {
+        studentEmail : email
+      }
+      const result = await applicationCollection.find(query).sort({createdAt : -1}).toArray()
+
+      res.send(result)
+    })
+    
     app.get('/applications/:email', async(req, res) => {
       const email = req.params.email
       const query = {
         tutorEmail : email
       }
-      const result = await applicationCollection.find(query).toArray()
+      const result = await applicationCollection.find(query).sort({createdAt : -1}).toArray()
 
       res.send(result)
     })
