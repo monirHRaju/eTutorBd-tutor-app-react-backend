@@ -142,6 +142,16 @@ async function run() {
       res.send(user);
     });
 
+    app.delete("/users/:userId/delete", async (req, res) => {
+      const userId = req.params.userId;
+      const query = { _id: new ObjectId(userId) };
+
+      const result = await userCollection.deleteOne(query);
+
+      res.send(result);
+    });
+
+
     app.get("/users/:email/role", async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -219,9 +229,11 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/tuitions", async (req, res) => {
+    app.get("/not-enrolled-accepted-tuitions", async (req, res) => {
       const query = {
         status: "accepted",
+        tutorEnrolled: { $ne: true }
+
       };
       const result = await tuitionCollection
         .find(query)
@@ -251,7 +263,7 @@ async function run() {
 
     app.get("/tuitions/:email/student", async (req, res) => {
       const email = req.params.email;
-      const query = { studentEmail: email };
+      const query = { studentEmail: email, tutorEnrolled: { $ne: true } };
 
       const result = await tuitionCollection.find(query).toArray();
       res.send(result);
@@ -371,6 +383,13 @@ async function run() {
       const sessionId = req.query.session_id
 
       const session = await stripe.checkout.sessions.retrieve(sessionId)
+      // data to send frontend
+      const amountTotal = session.amount_total/100
+      const transactionId = session.payment_intent
+      const tutorEmail = session.metadata.tutorEmail
+
+      
+
       console.log('session retrieve', session)
       if(session.payment_status === 'paid'){
         const tuitionId = session.metadata.tuitionId
@@ -388,13 +407,13 @@ async function run() {
           tuitionId : tuitionId,
           tutorEmail : session.metadata.tutorEmail
         }
-        const acceptedApplicationUpdate = {
+        const enrolledApplicationUpdate = {
           $set : {
-            status : 'accepted'
+            status : 'enrolled'
           }
         }
-        const acceptedTuition = await applicationCollection.updateOne(acceptQuey, acceptedApplicationUpdate)
-        console.log('accepted', acceptedTuition);
+        const enrolledTuition = await applicationCollection.updateOne(acceptQuey, enrolledApplicationUpdate)
+        console.log('enrolled', enrolledTuition);
 
         //accept one from rejected list
         const query = {_id : new ObjectId(tuitionId)}
@@ -404,11 +423,15 @@ async function run() {
             tutorEmail : session.metadata.tutorEmail
           }
         }
-        const result = await tuitionCollection.updateOne(query, update)
+        const tuitionUpdateResult = await tuitionCollection.updateOne(query, update)
 
+        console.log('tuition enrolled update:', tuitionUpdateResult)
+        const matchedCount = tuitionUpdateResult.matchedCount
 
-        res.send(resultTuition)
+        const paymentData = {amountTotal, transactionId, tutorEmail, matchedCount}
+        return res.send(paymentData)
       }
+
       res.send({success : false})
     })
 
