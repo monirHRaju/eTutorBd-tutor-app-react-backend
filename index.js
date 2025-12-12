@@ -126,7 +126,7 @@ async function run() {
     //get all users
     app.get("/users", async (req, res) => {
       const query = {};
-      const cursor = userCollection.find(query);
+      const cursor = userCollection.find(query).sort({ createdAt: -1 });
       const result = await cursor.toArray();
 
       res.send(result);
@@ -237,6 +237,20 @@ async function run() {
       };
       const result = await tuitionCollection
         .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+      // console.log(result)
+      res.send(result);
+    });
+    
+    app.get("/not-enrolled-accepted-latest-tuitions", async (req, res) => {
+      const query = {
+        status: "accepted",
+        tutorEnrolled: { $ne: true }
+
+      };
+      const result = await tuitionCollection
+        .find(query)
         .limit(8)
         .sort({ createdAt: -1 })
         .toArray();
@@ -265,7 +279,7 @@ async function run() {
       const email = req.params.email;
       const query = { studentEmail: email, tutorEnrolled: { $ne: true } };
 
-      const result = await tuitionCollection.find(query).toArray();
+      const result = await tuitionCollection.find(query).sort({ createdAt: -1 }).toArray();
       res.send(result);
     });
 
@@ -435,6 +449,18 @@ async function run() {
       res.send({success : false})
     })
 
+
+    // tutor related apis
+    app.get("/tutors", async (req, res) => {
+      const query = {
+        role: "tutor",
+        status : "accepted"
+      };
+      const cursor = userCollection.find(query).sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+
+      res.send(result);
+    });
   
   } finally {
     // Ensures that the client will close when you finish/error
