@@ -14,6 +14,7 @@ const port = process.env.PORT || 3000;
 // )
 // const serviceAccount = JSON.parse(decoded)
 const serviceAccount = require("./serviceAccountKey.json");
+const { generateJobId } = require("../frontend/src/utilities");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -200,6 +201,7 @@ async function run() {
     app.post("/tuitions", async (req, res) => {
       const tuitionData = req.body;
       tuitionData.createdAt = new Date().toLocaleString();
+      tuitionData.jobId = generateJobId()
 
       const result = await tuitionCollection.insertOne(tuitionData);
 
