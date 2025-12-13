@@ -68,6 +68,7 @@ async function run() {
     const userCollection = eTutorBd_db.collection("users");
     const tuitionCollection = eTutorBd_db.collection("tuitions");
     const applicationCollection = eTutorBd_db.collection("applications");
+    const paymentCollection = eTutorBd_db.collection("payments");
 
     // user related apis
 
@@ -109,7 +110,7 @@ async function run() {
     app.post("/users", async (req, res) => {
       const userData = req.body;
       // user.role = 'user';
-      userData.createdAt = new Date().toLocaleDateString();
+      userData.createdAt = new Date().toLocaleString();
       userData.status = "pending";
       const query = {
         email: userData.email,
@@ -126,7 +127,10 @@ async function run() {
 
     //get all users
     app.get("/users", async (req, res) => {
-      const query = {};
+      const myEmail = req.query.email
+      const query = {
+        email : {$ne : myEmail}
+      };
       const cursor = userCollection.find(query).sort({ createdAt: -1 });
       const result = await cursor.toArray();
 
@@ -359,7 +363,7 @@ async function run() {
     // stripe payment related apis
     app.post("/create-checkout-session", async (req, res) => {
       const paymentInfo = req.body
-      
+      console.log(paymentInfo)
       const amount = parseInt(paymentInfo.offerPrice) * 100
       console.log({paymentInfo, amount})
       const session = await stripe.checkout.sessions.create({
@@ -380,8 +384,11 @@ async function run() {
         mode: "payment",
         metadata: {
           tuitionId : paymentInfo.tuitionId,
+          studentId : paymentInfo.studentId,
           budget : paymentInfo.budget,
           studentName : paymentInfo.studentName,
+          studentEmail : paymentInfo.studentEmail,
+          tutorName : paymentInfo.tutorName,
           tutorEmail : paymentInfo.tutorEmail
         },
         success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -402,13 +409,32 @@ async function run() {
       // data to send frontend
       const amountTotal = session.amount_total/100
       const transactionId = session.payment_intent
+      const tutorName = session.metadata.tutorName
       const tutorEmail = session.metadata.tutorEmail
+      const tuitionId = session.metadata.tuitionId
+      const budget = session.metadata.budget
+      const studentName = session.metadata.studentName
+      const studentEmail = session.metadata.studentEmail
+      const paymentStatus = session.payment_status
+
+      //add payment data to mongo db
+       const query = { transactionId: transactionId }
+
+            const paymentExist = await paymentCollection.findOne(query);
+            console.log(paymentExist);
+            if (paymentExist) {
+
+                return res.send({
+                    message: 'already exists',
+                    transactionId,
+                    tuitionId: paymentExist.tuitionId
+                })
+            }
 
       
 
       console.log('session retrieve', session)
-      if(session.payment_status === 'paid'){
-        const tuitionId = session.metadata.tuitionId
+      if(paymentStatus === 'paid'){
         
         // reject all applications for a tuition
         const applicationQuery = {tuitionId : tuitionId}
@@ -417,26 +443,27 @@ async function run() {
             status : 'rejected'
           }
         }
-        const rejectedTuitions = await applicationCollection.updateMany(applicationQuery, rejectedApplicationUpdate)
-        console.log('rejected',rejectedTuitions);
-        const acceptQuey = {
+        const rejectedTuitionResult = await applicationCollection.updateMany(applicationQuery, rejectedApplicationUpdate)
+        console.log('rejected', rejectedTuitionResult);
+        //accept one application after rejecting all from those
+        const enrolledQuey = {
           tuitionId : tuitionId,
-          tutorEmail : session.metadata.tutorEmail
+          tutorEmail
         }
         const enrolledApplicationUpdate = {
           $set : {
             status : 'enrolled'
           }
         }
-        const enrolledTuition = await applicationCollection.updateOne(acceptQuey, enrolledApplicationUpdate)
-        console.log('enrolled', enrolledTuition);
+        const enrolledTuitionResult = await applicationCollection.updateOne(enrolledQuey, enrolledApplicationUpdate)
+        console.log('enrolled', enrolledTuitionResult);
 
         //accept one from rejected list
         const query = {_id : new ObjectId(tuitionId)}
         const update =  {
           $set : {
             tutorEnrolled : true,
-            tutorEmail : session.metadata.tutorEmail
+            tutorEmail
           }
         }
         const tuitionUpdateResult = await tuitionCollection.updateOne(query, update)
@@ -444,8 +471,31 @@ async function run() {
         console.log('tuition enrolled update:', tuitionUpdateResult)
         const matchedCount = tuitionUpdateResult.matchedCount
 
-        const paymentData = {amountTotal, transactionId, tutorEmail, matchedCount}
-        return res.send(paymentData)
+        const paymentData = {
+          amountTotal, 
+          transactionId,
+          tuitionId, 
+          tutorName,
+          tutorEmail,
+          studentId,
+          studentName, 
+          studentEmail,
+          status : "paid",
+          matchedCount, budget, studentId, 
+          createdAt : new Date().toLocaleString()
+        }
+        
+        const resultPayment =  paymentCollection.insertOne(paymentData)
+        
+
+        return res.send({
+          success: true,
+          modifyApplication: enrolledApplicationUpdate,
+          modifyTuition : tuitionUpdateResult,
+          insertPaymentInfo: resultPayment,
+          transactionId
+        
+        })
       }
 
       res.send({success : false})
@@ -459,6 +509,36 @@ async function run() {
         status : "accepted"
       };
       const cursor = userCollection.find(query).sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+
+      res.send(result);
+    });
+
+    //payment related api
+    app.get("/student-payments", async (req, res) => {
+      const studentEmail = req.query.email
+      const query = {
+        studentEmail : studentEmail
+      };
+      const cursor = paymentCollection.find(query).sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+
+      res.send(result);
+    });
+  
+    app.get("/tutor-payments", async (req, res) => {
+      const tutorEmail = req.query.email
+      const query = {
+        tutorEmail : tutorEmail
+      };
+      const cursor = paymentCollection.find(query).sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+
+      res.send(result);
+    });
+  
+    app.get("/all-payments", async (req, res) => {
+      const cursor = paymentCollection.find().sort({ createdAt: -1 });
       const result = await cursor.toArray();
 
       res.send(result);
