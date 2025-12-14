@@ -513,6 +513,16 @@ async function run() {
 
       res.send(result);
     });
+    app.get("/accepted-latest-tutors", async (req, res) => {
+      const query = {
+        role: "tutor",
+        status : "accepted"
+      };
+      const cursor = userCollection.find(query).limit(4).sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+
+      res.send(result);
+    });
 
     //payment related api
     app.get("/student-payments", async (req, res) => {
