@@ -117,12 +117,12 @@ async function run() {
       };
       const userExists = await userCollection.findOne(query);
 
-      if (userExists) {
-        return res.status(401).send({ message: "user exists" });
+      if (!userExists) {
+        await userCollection.insertOne(userData);
       }
+      
+      res.send({ acknowledged: true });
 
-      const result = await userCollection.insertOne(userData);
-      res.send(result);
     });
 
     //get all users
@@ -477,7 +477,6 @@ async function run() {
           tuitionId, 
           tutorName,
           tutorEmail,
-          studentId,
           studentName, 
           studentEmail,
           status : "paid",
