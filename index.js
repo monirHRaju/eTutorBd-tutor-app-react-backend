@@ -308,20 +308,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/applications/:email/student", async (req, res) => {
-      const email = req.params.email;
-      const query = {
-        studentEmail: email,
-      };
-      const result = await applicationCollection
-        .find(query)
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      res.send(result);
-    });
-
-    app.get("/applications/:email", async (req, res) => {
+    app.get("/applications/:email/tutor", async (req, res) => {
       const email = req.params.email;
       const query = {
         tutorEmail: email,
@@ -333,6 +320,36 @@ async function run() {
 
       res.send(result);
     });
+    
+    app.get("/enrolled-applications/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        tutorEmail: email,
+        status: 'enrolled'
+      };
+      const result = await applicationCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
+    app.get("/applications/:email/student", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        studentEmail: email,
+        status: 'enrolled'
+      };
+      const result = await applicationCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
+    
 
     app.patch("/applications/:id/status", async (req, res) => {
       const status = req.body.status;
@@ -348,6 +365,15 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/applications/:id", async (req, res) => {
+      const applicationId = req.params.id;
+      const query = { _id: new ObjectId(applicationId) };
+
+      const result = await applicationCollection.deleteOne(query);
+
+      res.send(result);
+    });
+    
     app.patch("/applications/:id/delete", async (req, res) => {
       const applicationId = req.params.id;
       const query = { _id: new ObjectId(applicationId) };
@@ -415,18 +441,19 @@ async function run() {
       const paymentStatus = session.payment_status
 
       //add payment data to mongo db
-       const query = { transactionId: transactionId }
+       const query = { transactionId };
 
-            const paymentExist = await paymentCollection.findOne(query);
-            console.log(paymentExist);
-            if (paymentExist) {
-
-                return res.send({
-                    message: 'already exists',
-                    transactionId,
-                    tuitionId: paymentExist.tuitionId
-                })
-            }
+      const paymentExist = await paymentCollection.findOne(query);
+        if (paymentExist) {
+          return res.send({
+            success: true,
+            message: "Payment already processed",
+            transactionId,
+            matchedCount: paymentExist.matchedCount || 1
+          });
+        }
+       
+       
 
       
 
@@ -434,14 +461,15 @@ async function run() {
       if(paymentStatus === 'paid'){
         
         // reject all applications for a tuition
-        const applicationQuery = {tuitionId : tuitionId}
+        const applicationQuery = {tuitionId}
         const rejectedApplicationUpdate = {
           $set : {
-            status : 'rejected'
+            status : 'rejected',
+            updatedAt : new Date().toLocaleString()
           }
         }
-        const rejectedTuitionResult = await applicationCollection.updateMany(applicationQuery, rejectedApplicationUpdate)
-        console.log('rejected', rejectedTuitionResult);
+        await applicationCollection.updateMany(applicationQuery, rejectedApplicationUpdate)
+        // console.log('rejected', rejectedTuitionResult);
         //accept one application after rejecting all from those
         const enrolledQuey = {
           tuitionId : tuitionId,
@@ -449,7 +477,8 @@ async function run() {
         }
         const enrolledApplicationUpdate = {
           $set : {
-            status : 'enrolled'
+            status : 'enrolled',
+            updatedAt : new Date().toLocaleString()
           }
         }
         const enrolledTuitionResult = await applicationCollection.updateOne(enrolledQuey, enrolledApplicationUpdate)
@@ -460,7 +489,8 @@ async function run() {
         const update =  {
           $set : {
             tutorEnrolled : true,
-            tutorEmail
+            tutorEmail,
+            updatedAt : new Date().toLocaleString()
           }
         }
         const tuitionUpdateResult = await tuitionCollection.updateOne(query, update)
@@ -477,21 +507,20 @@ async function run() {
           studentName, 
           studentEmail,
           status : "paid",
-          matchedCount, budget, studentId, 
-          createdAt : new Date().toLocaleString()
+          matchedCount, budget, 
+          createdAt : new Date().toLocaleString(),
+          updatedAt : new Date().toLocaleString()
         }
         
-        const resultPayment =  paymentCollection.insertOne(paymentData)
+        const resultPayment = await paymentCollection.insertOne(paymentData)
         
 
         return res.send({
-          success: true,
-          modifyApplication: enrolledApplicationUpdate,
-          modifyTuition : tuitionUpdateResult,
-          insertPaymentInfo: resultPayment,
-          transactionId
-        
-        })
+        success: true,
+        matchedCount,
+        transactionId,
+        insertPaymentInfo: resultPayment
+      });
       }
 
       res.send({success : false})
@@ -526,7 +555,7 @@ async function run() {
       const query = {
         studentEmail : studentEmail
       };
-      const cursor = paymentCollection.find(query).sort({ createdAt: -1 });
+      const cursor = paymentCollection.find(query).sort({ updatedAt: -1 });
       const result = await cursor.toArray();
 
       res.send(result);
@@ -537,14 +566,14 @@ async function run() {
       const query = {
         tutorEmail : tutorEmail
       };
-      const cursor = paymentCollection.find(query).sort({ createdAt: -1 });
+      const cursor = paymentCollection.find(query).sort({ updatedAt: -1 });
       const result = await cursor.toArray();
 
       res.send(result);
     });
   
     app.get("/all-payments", async (req, res) => {
-      const cursor = paymentCollection.find().sort({ createdAt: -1 });
+      const cursor = paymentCollection.find().sort({ updatedAt: -1 });
       const result = await cursor.toArray();
 
       res.send(result);
