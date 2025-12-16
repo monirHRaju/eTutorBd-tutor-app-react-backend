@@ -72,41 +72,6 @@ async function run() {
 
     // user related apis
 
-    // post user
-    // app.post('/users', async (req, res) => {
-    //   const userData = req.body
-    //   userData.created_at = new Date().toISOString()
-    //   userData.last_loggedIn = new Date().toISOString()
-
-    //   if(!userData.role) {
-    //     userData.role = 'student'
-    //   }
-
-    //   console.log(userData)
-
-    //   const query = {
-    //     email: userData.email
-    //   }
-
-    //   const alreadyExists = await usersCollection.findOne(query)
-    //   console.log('User Already Exists---> ', !!alreadyExists)
-
-    //   if (alreadyExists) {
-    //     console.log('Updating user info......')
-    //     const result = await usersCollection.updateOne(query, {
-    //       $set: {
-    //         last_loggedIn: new Date().toISOString(),
-    //       },
-    //     })
-    //     return res.send(result)
-    //   }
-
-    //   console.log('Saving new user info......')
-    //   const userInsertResult = await usersCollection.insertOne(userData)
-
-    //   res.send(userInsertResult)
-    // })
-
     app.post("/users", async (req, res) => {
       const userData = req.body;
       // user.role = 'user';
@@ -118,12 +83,27 @@ async function run() {
       const userExists = await userCollection.findOne(query);
 
       if (!userExists) {
-        await userCollection.insertOne(userData);
+        const data = await userCollection.insertOne(userData);
+        return res.send(data)
       }
       
       res.send({ acknowledged: true });
 
     });
+
+    
+    app.patch("/users/:email", async (req, res) => {
+      const userData = req.body
+      const email = req.params.email;
+      const query = { email };
+      const updateDoc = {
+        $set: userData
+      };
+      const result = await userCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
 
     //get all users
     app.get("/users", async (req, res) => {
@@ -165,6 +145,14 @@ async function run() {
       res.send({ role: user?.role });
     });
 
+    app.get("/user-info", async (req, res) => {
+      const email = req.query.email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      console.log(user)
+      res.send(user);
+    });
+
     app.get("/tutor-info/:email/email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
@@ -172,7 +160,7 @@ async function run() {
       // console.log(result)
       res.send({ role: user?.role });
     });
-
+    
     app.patch("/users/:id", async (req, res) => {
       const role = req.body.role;
       const id = req.params.id;
@@ -183,6 +171,15 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
+    app.get("/tutors/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      
+      const result = await userCollection.findOne(query);
 
       res.send(result);
     });
@@ -371,7 +368,7 @@ async function run() {
           {
             // Provide the exact Price ID (for example, price_1234) of the product you want to sell
             price_data: {
-              currency : 'USD',
+              currency : 'BDT',
               unit_amount : amount,
               product_data: {
                 name: paymentInfo.subject,
