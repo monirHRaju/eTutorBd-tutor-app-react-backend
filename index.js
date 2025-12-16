@@ -245,6 +245,8 @@ async function run() {
       // console.log(result)
       res.send(result);
     });
+
+
     
     app.get("/not-enrolled-accepted-latest-tuitions", async (req, res) => {
       const query = {
@@ -259,6 +261,21 @@ async function run() {
         .toArray();
       // console.log(result)
       res.send(result);
+    });
+
+    app.get("/all-accepted-tuitions-client", async (req, res) => {
+      
+      const {limit=0, skip=0} = req.query
+      const tuitions = await tuitionCollection
+        .find()
+        .limit(Number(limit))
+        .skip(Number(skip))
+        .sort({ createdAt: -1 })
+        .toArray();
+     
+        const count = await tuitionCollection.countDocuments();
+        
+      res.send({tuitions, total:count});
     });
 
     app.get("/all-tuitions", async (req, res) => {
