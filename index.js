@@ -24,7 +24,7 @@ admin.initializeApp({
 // middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [process.env.SITE_DOMAIN],
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -199,7 +199,7 @@ async function run() {
     });
 
     //tuitions related apis
-    app.post("/tuitions", async (req, res) => {
+    app.post("/tuitions", verifyJWT, async (req, res) => {
       const tuitionData = req.body;
       tuitionData.createdAt = new Date().toLocaleString();
       tuitionData.jobId = generateJobId()
@@ -263,22 +263,39 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/all-accepted-tuitions-client", async (req, res) => {
+    app.get("/all-accepted-tuitions-for-client", async (req, res) => {
       
-      const {limit=0, skip=0} = req.query
+      const {limit=0, skip=0, sort="createdAt", order='desc', search=''} = req.query
+      const sortOption = {}
+      sortOption[sort] = order === 'asc' ? 1 : -1
+      
+      // const query = {}
+      // if(query){
+      //   query.subject = {$regex: search, $options: "i"}
+      //   query.subject = {$regex: search, $options: "i"}
+      // }
+      
+      const query = search
+      ? { subject: {$regex: search, $options: "i"},
+          subject: {$regex: search, $options: "i"},
+        }
+      : {}
+
+      console.log(query)
+
       const tuitions = await tuitionCollection
-        .find()
+        .find(query)
+        .sort(sortOption)
         .limit(Number(limit))
         .skip(Number(skip))
-        .sort({ createdAt: -1 })
         .toArray();
-     
-        const count = await tuitionCollection.countDocuments();
+
+        const count = await tuitionCollection.countDocuments(query);
         
       res.send({tuitions, total:count});
     });
 
-    app.get("/all-tuitions", async (req, res) => {
+    app.get("/all-tuitions", verifyJWT, async (req, res) => {
       const result = await tuitionCollection
         .find()
         .sort({ createdAt: -1 })
@@ -295,7 +312,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/tuitions/:email/student", async (req, res) => {
+    app.get("/tuitions/:email/student", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = { studentEmail: email, tutorEnrolled: { $ne: true } };
 
@@ -304,7 +321,7 @@ async function run() {
     });
 
     //application related apis
-    app.post("/applications", async (req, res) => {
+    app.post("/applications", verifyJWT, async (req, res) => {
       const applicationInfo = req.body;
       applicationInfo.createdAt = new Date().toLocaleString();
 
@@ -338,7 +355,7 @@ async function run() {
       res.send(result);
     });
     
-    app.get("/enrolled-applications/:email", async (req, res) => {
+    app.get("/enrolled-applications/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = {
         tutorEmail: email,
@@ -352,7 +369,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/applications/:email/student", async (req, res) => {
+    app.get("/applications/:email/student", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = {
         studentEmail: email,
@@ -567,7 +584,7 @@ async function run() {
     });
 
     //payment related api
-    app.get("/student-payments", async (req, res) => {
+    app.get("/student-payments", verifyJWT, async (req, res) => {
       const studentEmail = req.query.email
       const query = {
         studentEmail : studentEmail
@@ -578,7 +595,7 @@ async function run() {
       res.send(result);
     });
   
-    app.get("/tutor-payments", async (req, res) => {
+    app.get("/tutor-payments", verifyJWT, async (req, res) => {
       const tutorEmail = req.query.email
       const query = {
         tutorEmail : tutorEmail
@@ -589,7 +606,7 @@ async function run() {
       res.send(result);
     });
   
-    app.get("/all-payments", async (req, res) => {
+    app.get("/all-payments", verifyJWT, async (req, res) => {
       const cursor = paymentCollection.find().sort({ updatedAt: -1 });
       const result = await cursor.toArray();
 
