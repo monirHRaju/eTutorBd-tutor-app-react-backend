@@ -612,7 +612,166 @@ async function run() {
 
       res.send(result);
     });
-  
+
+    // admin dashboard stats api
+    app.get('/tuitions/status/stats', async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1}
+          }
+        }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/applications/status/stats', async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1}
+          }
+        }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/users/role/stats', async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: '$role',
+            count: { $sum: 1}
+          }
+        }
+      ]
+      const result = await userCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/payment/amountTotal/stats', async (req, res) => {
+      const pipeline = [
+        {
+        $group: {
+            _id: null,
+            totalAmount: { $sum: "$amountTotal" }
+          }
+        }
+      ]
+      const result = await paymentCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    // tutor statistics
+    app.get('/payments/tutor/stat/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail
+      const pipeline = [
+        { $match: { tutorEmail } },
+        {
+          $group: {
+            _id: "$tutorEmail",
+            totalAmount: { $sum: { $toInt: "$amountTotal" } }
+          }
+        }
+      ]
+      const result = await paymentCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/enrolled-tuitions/tutor/stat/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail
+      const pipeline = [
+        { $match: { tutorEmail, status: "enrolled" } },
+        { $count: "enrolledCount" }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/enrolled-tuitions/tutor/stat/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail
+      const pipeline = [
+        { $match: { tutorEmail, status: "enrolled" } },
+        { $count: "enrolledCount" }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/pending-tuitions/tutor/stat/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail
+      const pipeline = [
+        { $match: { tutorEmail, status: "pending" } },
+        { $count: "pendingCount" }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/rejected-tuitions/tutor/stat/:tutorEmail', async (req, res) => {
+      const tutorEmail = req.params.tutorEmail
+      const pipeline = [
+        { $match: { tutorEmail, status: "rejected" } },
+        { $count: "rejectedCount" }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+
+
+    
+    // student statistics
+    app.get('/payments/student/stat/:studentEmail', async (req, res) => {
+      const studentEmail = req.params.studentEmail
+      const pipeline = [
+        { $match: { studentEmail } },
+        {
+          $group: {
+            _id: "$studentEmail",
+            totalAmount: { $sum: { $toInt: "$amountTotal" } }
+          }
+        }
+      ]
+      const result = await paymentCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/enrolled-tuitions/student/stat/:studentEmail', async (req, res) => {
+      const studentEmail = req.params.studentEmail
+      const pipeline = [
+        { $match: { studentEmail, status: "enrolled" } },
+        { $count: "enrolledCount" }
+      ]
+      const result = await applicationCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
+    app.get('/posted-tuitions/student/stat/:studentEmail', async (req, res) => {
+      const studentEmail = req.params.studentEmail
+      const pipeline = [
+        { $match: { studentEmail} },
+        { $group: { _id: null, postedCount: { $sum: 1 } } }
+      ]
+      const result = await tuitionCollection.aggregate(pipeline).toArray()
+
+      res.send(result)
+    })
+    
   } finally {
     // Ensures that the client will close when you finish/error
   }
