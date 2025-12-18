@@ -2,3 +2,4 @@
 serviceAccountKey.json
 node_modules
 serviceKeyConverter.js
+.vercel

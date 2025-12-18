@@ -13,8 +13,13 @@ const port = process.env.PORT || 3000;
 //   'utf-8'
 // )
 // const serviceAccount = JSON.parse(decoded)
-const serviceAccount = require("./serviceAccountKey.json");
-const { generateJobId } = require("../frontend/src/utilities");
+// const serviceAccount = require("./serviceAccountKey.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
+
+
+
+const { generateJobId } = require("./utls.js");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -59,10 +64,10 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 async function run() {
   try {
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
     // database and collections
     const eTutorBd_db = client.db("eTutorBd_db");
     const userCollection = eTutorBd_db.collection("users");
