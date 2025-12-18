@@ -208,6 +208,8 @@ async function run() {
       const tuitionData = req.body;
       tuitionData.createdAt = new Date().toLocaleString();
       tuitionData.jobId = generateJobId()
+      tuitionData.tutorEnrolled = false
+      
 
       const result = await tuitionCollection.insertOne(tuitionData);
 
@@ -255,9 +257,7 @@ async function run() {
     
     app.get("/not-enrolled-accepted-latest-tuitions", async (req, res) => {
       const query = {
-        status: "accepted",
-        tutorEnrolled: { $ne: true }
-
+        status: "accepted"
       };
       const result = await tuitionCollection
         .find(query)
@@ -275,18 +275,19 @@ async function run() {
       sortOption[sort] = order === 'asc' ? 1 : -1
       
       // const query = {}
-      // if(query){
+      // if(search){
       //   query.subject = {$regex: search, $options: "i"}
       //   query.subject = {$regex: search, $options: "i"}
       // }
       
       const query = search
-      ? { subject: {$regex: search, $options: "i"},
-          subject: {$regex: search, $options: "i"},
-        }
-      : {}
+                    ? { 
+                      status: "accepted",
+                      subject: {$regex: search, $options: "i"},
+                      }
+                    : {status: "accepted",}
 
-      console.log(query)
+      // console.log(query)
 
       const tuitions = await tuitionCollection
         .find(query)
