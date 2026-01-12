@@ -13,9 +13,9 @@ const port = process.env.PORT || 3000;
 //   'utf-8'
 // )
 // const serviceAccount = JSON.parse(decoded)
-// const serviceAccount = require("./serviceAccountKey.json");
-const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
-const serviceAccount = JSON.parse(decoded);
+const serviceAccount = require("./serviceAccountKey.json");
+// const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+// const serviceAccount = JSON.parse(decoded);
 
 
 
@@ -64,10 +64,10 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 async function run() {
   try {
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
     // database and collections
     const eTutorBd_db = client.db("eTutorBd_db");
     const userCollection = eTutorBd_db.collection("users");
@@ -269,36 +269,80 @@ async function run() {
     });
 
     app.get("/all-accepted-tuitions-for-client", async (req, res) => {
-      
-      const {limit=0, skip=0, sort="createdAt", order='desc', search=''} = req.query
-      const sortOption = {}
-      sortOption[sort] = order === 'asc' ? 1 : -1
-      
-      // const query = {}
-      // if(search){
-      //   query.subject = {$regex: search, $options: "i"}
-      //   query.subject = {$regex: search, $options: "i"}
-      // }
-      
-      const query = search
-                    ? { 
-                      status: "accepted",
-                      subject: {$regex: search, $options: "i"},
-                      }
-                    : {status: "accepted",}
+      try {
+        const {
+          limit = 8,
+          skip = 0,
+          sort = "createdAt",
+          order = "desc",
+          search = "",
+          district = "",
+          tutorGender = "",
+          minBudget = "",
+          maxBudget = ""
+        } = req.query;
 
-      // console.log(query)
+        // Build sort object
+        const sortOption = {};
+        sortOption[sort] = order === "asc" ? 1 : -1;
 
-      const tuitions = await tuitionCollection
-        .find(query)
-        .sort(sortOption)
-        .limit(Number(limit))
-        .skip(Number(skip))
-        .toArray();
+        // Build query object with all filters
+        const query = { status: "accepted" };
 
-        const count = await tuitionCollection.countDocuments(query);
-        
-      res.send({tuitions, total:count});
+        // Search by subject
+        if (search && search.trim()) {
+          query.subject = { $regex: search.trim(), $options: "i" };
+        }
+
+        // Filter by district
+        if (district && district.trim()) {
+          query.district = district.trim();
+        }
+
+        // Filter by tutor gender
+        if (tutorGender && tutorGender.trim()) {
+          query.tutorGender = tutorGender.trim();
+        }
+
+        // Filter by budget range
+        const budgetFilters = [];
+        if (minBudget) {
+          budgetFilters.push({ budget: { $gte: Number(minBudget) } });
+        }
+        if (maxBudget) {
+          budgetFilters.push({ budget: { $lte: Number(maxBudget) } });
+        }
+
+        // Combine budget filters with other filters
+        if (budgetFilters.length > 0) {
+          if (budgetFilters.length === 2) {
+            query.budget = {
+              $gte: Number(minBudget),
+              $lte: Number(maxBudget)
+            };
+          } else if (budgetFilters[0].budget.$gte) {
+            query.budget = { $gte: Number(minBudget) };
+          } else if (budgetFilters[0].budget.$lte) {
+            query.budget = { $lte: Number(maxBudget) };
+          }
+        }
+
+        // Fetch tuitions with filters, sort, limit, and skip
+        const tuitions = await tuitionCollection
+          .find(query)
+          .sort(sortOption)
+          .limit(Number(limit))
+          .skip(Number(skip))
+          .toArray();
+
+        // Get total count for pagination
+        const total = await tuitionCollection.countDocuments(query);
+
+        res.send({ tuitions, total });
+      } catch (error) {
+        console.error("Error fetching tuitions:", error);
+        res.status(500).send({ error: "Failed to fetch tuitions" });
+      }
     });
 
     app.get("/all-tuitions", verifyJWT, async (req, res) => {
